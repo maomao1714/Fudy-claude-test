@@ -107,6 +107,18 @@ jobs:
           ./scripts/feeds install -a
           echo ">>> feeds 安装完成"
 
+      - name: 移除冲突包（vsftpd 与 vsftpd-alt 文件冲突）
+        run: |
+          cd openwrt
+          # qmodem feed 会带入 luci-app-vsftpd，它依赖普通 vsftpd
+          # 普通 vsftpd 与我们使用的 vsftpd-alt 文件冲突，必须移除
+          echo ">>> 移除 luci-app-vsftpd（与 vsftpd-alt 冲突）"
+          rm -rf feeds/qmodem/luci-app-vsftpd 2>/dev/null || true
+          rm -rf feeds/packages/net/vsftpd 2>/dev/null || true
+          # 重新生成包索引使删除生效
+          ./scripts/feeds install -a 2>/dev/null || true
+          echo ">>> 冲突包移除完成"
+
       - name: 复制配置文件
         run: |
           [ -e files ] && mv files openwrt/files
@@ -129,15 +141,9 @@ jobs:
       - name: 加载配置
         run: |
           cd openwrt
-          # 验证 .config 基本格式，防止非法行导致 make defconfig 崩溃
           echo ">>> .config 前5行预览："
           head -5 .config
-          make defconfig 2>&1 | tee /tmp/defconfig.log
-          if grep -q "Stop\." /tmp/defconfig.log; then
-            echo "!!! make defconfig 失败，.config 内容如下："
-            cat .config | head -30
-            exit 1
-          fi
+          make defconfig
           echo ">>> 当前差异配置："
           ./scripts/diffconfig.sh
 
@@ -207,7 +213,7 @@ jobs:
           🔧 源码：coolsnowwolf/lede master | 内核：Linux 6.6 LTS
 
           ✅ 已包含功能：
-          - LuCI Design 主题（Web 秒开优化）
+          - LuCI Design 主题
           - Docker 容器支持
           - Lucky 内网穿透/DDNS
           - Qmodem 4G/5G 模块管理
@@ -216,7 +222,7 @@ jobs:
           - Samba4 文件共享
           - rtp2httpd IPTV 组播转单播
           - 带宽监控 / UPnP / WOL
-          - WiFi 首次启动修复（刷机后无需重启即有 WiFi）
+          - WiFi 首次启动修复
 
           📌 刷机前请备份当前配置！
           REOF
@@ -226,17 +232,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: steps.tag.outputs.status == 'success'
         with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          body_path: ${{ github.workspace }}/release.txt
-          files: ${{ env.FIRMWARE }}/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 清理旧的 Releases
-        uses: dev-drprasad/delete-older-releases@v0.3.4
-        if: env.UPLOAD_RELEASE == 'true'
-        with:
-          keep_latest: 5
-          delete_tags: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tag.outputs.re
