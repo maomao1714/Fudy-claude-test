@@ -100,24 +100,22 @@ jobs:
             feeds-lede-${{ hashFiles('**/feeds.conf.default', '**/diy-part1.sh') }}-
             feeds-lede-
 
-      - name: 更新并安装软件包列表
+      - name: 更新并安装软件包列表（含移除冲突包）
         run: |
           cd openwrt
           ./scripts/feeds update -a
+
+          # ★ 在 install 之前先删除冲突包的源目录
+          # 这样 feeds install -a 就不会把它们装入索引
+          echo ">>> 删除 vsftpd 冲突包源目录（install 前）"
+          rm -rf feeds/qmodem/luci-app-vsftpd        2>/dev/null || true
+          rm -rf feeds/luci/applications/luci-app-vsftpd 2>/dev/null || true
+          rm -rf feeds/packages/net/vsftpd            2>/dev/null || true
+          echo ">>> 剩余 vsftpd 相关目录确认："
+          find feeds -maxdepth 4 -name "*vsftpd*" -type d 2>/dev/null || echo "无（已全部清除）"
+
           ./scripts/feeds install -a
           echo ">>> feeds 安装完成"
-
-      - name: 移除冲突包（vsftpd 与 vsftpd-alt 文件冲突）
-        run: |
-          cd openwrt
-          # qmodem feed 会带入 luci-app-vsftpd，它依赖普通 vsftpd
-          # 普通 vsftpd 与我们使用的 vsftpd-alt 文件冲突，必须移除
-          echo ">>> 移除 luci-app-vsftpd（与 vsftpd-alt 冲突）"
-          rm -rf feeds/qmodem/luci-app-vsftpd 2>/dev/null || true
-          rm -rf feeds/packages/net/vsftpd 2>/dev/null || true
-          # 重新生成包索引使删除生效
-          ./scripts/feeds install -a 2>/dev/null || true
-          echo ">>> 冲突包移除完成"
 
       - name: 复制配置文件
         run: |
