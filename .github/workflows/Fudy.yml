@@ -1,4 +1,4 @@
-name: 编译 Fudy_pro(Lede)
+name: 编译 OpenWrt 固件 (华思飞 WH3000 / LEDE)
 
 on:
   workflow_dispatch:
@@ -127,10 +127,15 @@ jobs:
           # 2. docker-compose：Go 依赖版本冲突，无法编译
           rm -rf feeds/packages/utils/docker-compose     2>/dev/null || true
 
+          # 3. luci-app-dockerman：强依赖 docker-compose，一并移除
+          rm -rf feeds/luci/applications/luci-app-dockerman 2>/dev/null || true
+
           echo ">>> 剩余 vsftpd 相关："
-          find feeds -maxdepth 5 -name "*vsftpd*"         2>/dev/null || echo "✅ 无残留"
+          find feeds -maxdepth 5 -name "*vsftpd*"          2>/dev/null || echo "✅ 无残留"
           echo ">>> 剩余 docker-compose 相关："
-          find feeds -maxdepth 5 -name "*docker-compose*" 2>/dev/null || echo "✅ 无残留"
+          find feeds -maxdepth 5 -name "*docker-compose*"  2>/dev/null || echo "✅ 无残留"
+          echo ">>> 剩余 dockerman 相关："
+          find feeds -maxdepth 5 -name "*dockerman*"       2>/dev/null || echo "✅ 无残留"
 
           ./scripts/feeds install -a
           echo ">>> feeds 安装完成"
